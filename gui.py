@@ -298,39 +298,160 @@ class MainPage(ctk.CTkFrame):
         self.log_box.see("end")
 
     def auto_reply(self):
-        """Start auto-reply mode."""
-        interval_dialog = ctk.CTkInputDialog(
-            text="Check interval (minutes):",
-            title="Auto Reply"
+        """Start auto-reply mode with AI or fixed message options."""
+        # Create custom dialog for AI configuration
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Auto Reply Configuration")
+        dialog.geometry("500x600")
+        dialog.resizable(False, False)
+
+        # Make it modal
+        dialog.grab_set()
+
+        # Store result
+        result = {"confirmed": False}
+
+        # Title
+        ctk.CTkLabel(
+            dialog,
+            text="Configure Auto-Reply",
+            font=("Helvetica", 18, "bold")
+        ).pack(pady=20)
+
+        # Check interval
+        ctk.CTkLabel(dialog, text="Check Interval (minutes):").pack(pady=(10, 5))
+        interval_entry = ctk.CTkEntry(dialog, width=300, placeholder_text="e.g., 5")
+        interval_entry.pack(pady=5)
+        interval_entry.insert(0, "5")
+
+        # AI Mode Toggle
+        ctk.CTkLabel(dialog, text="Reply Mode:", font=("Helvetica", 14, "bold")).pack(pady=(20, 10))
+
+        ai_mode_var = ctk.StringVar(value="fixed")
+
+        ctk.CTkRadioButton(
+            dialog,
+            text="🤖 AI-Generated Replies (Smart & Contextual)",
+            variable=ai_mode_var,
+            value="ai"
+        ).pack(pady=5)
+
+        ctk.CTkRadioButton(
+            dialog,
+            text="💬 Fixed Message (Same reply every time)",
+            variable=ai_mode_var,
+            value="fixed"
+        ).pack(pady=5)
+
+        # AI Provider Selection
+        ctk.CTkLabel(dialog, text="AI Provider (if using AI):", font=("Helvetica", 12)).pack(pady=(20, 5))
+
+        provider_var = ctk.StringVar(value="anthropic")
+        provider_menu = ctk.CTkOptionMenu(
+            dialog,
+            values=["anthropic", "openai", "groq", "ollama", "none"],
+            variable=provider_var,
+            width=300
         )
-        interval_str = interval_dialog.get_input()
-        
-        if interval_str:
-            reply_dialog = ctk.CTkInputDialog(
-                text="Reply message:",
-                title="Auto Reply"
-            )
-            reply_msg = reply_dialog.get_input()
-            
-            if reply_msg:
-                try:
-                    interval = int(interval_str)
-                    self.log_box.insert("end", f"🤖 Starting auto-reply (check every {interval} min)\n")
-                    
-                    def run_auto_reply():
-                        try:
-                            auto_reply_to_mentions(interval, reply_msg)
-                        except Exception as e:
-                            self.log_box.insert("end", f"❌ Auto-reply error: {e}\n")
-                            self.log_box.see("end")
-                    
-                    thread = threading.Thread(target=run_auto_reply, daemon=True)
-                    thread.start()
-                    messagebox.showinfo("Started", "Auto-reply mode started!\nPress Ctrl+C in terminal to stop.")
-                except ValueError:
-                    messagebox.showerror("Error", "Please enter a valid number")
-                except Exception as e:
-                    messagebox.showerror("Error", f"Error: {e}")
+        provider_menu.pack(pady=5)
+
+        # Optional: Brand context for AI
+        ctk.CTkLabel(dialog, text="Brand Context (optional, for AI):", font=("Helvetica", 12)).pack(pady=(15, 5))
+        context_entry = ctk.CTkEntry(
+            dialog,
+            width=400,
+            placeholder_text="e.g., 'We're a pizza delivery app'"
+        )
+        context_entry.pack(pady=5)
+
+        # Fixed message (for non-AI mode)
+        ctk.CTkLabel(dialog, text="Fixed Reply Message (if not using AI):", font=("Helvetica", 12)).pack(pady=(15, 5))
+        message_entry = ctk.CTkEntry(
+            dialog,
+            width=400,
+            placeholder_text="e.g., 'Thanks for reaching out!'"
+        )
+        message_entry.pack(pady=5)
+
+        # Buttons
+        def on_start():
+            result["confirmed"] = True
+            result["interval"] = interval_entry.get()
+            result["use_ai"] = ai_mode_var.get() == "ai"
+            result["provider"] = provider_var.get()
+            result["context"] = context_entry.get()
+            result["message"] = message_entry.get()
+            dialog.destroy()
+
+        def on_cancel():
+            dialog.destroy()
+
+        button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        ctk.CTkButton(
+            button_frame,
+            text="Start Auto-Reply",
+            command=on_start,
+            width=150,
+            fg_color="#3A9E5B",
+            hover_color="#4BBF6B"
+        ).pack(side="left", padx=10)
+
+        ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=on_cancel,
+            width=150,
+            fg_color="#C84B4B",
+            hover_color="#D65B5B"
+        ).pack(side="left", padx=10)
+
+        # Wait for dialog to close
+        self.wait_window(dialog)
+
+        # Process result
+        if result.get("confirmed"):
+            try:
+                interval = int(result["interval"])
+                use_ai = result["use_ai"]
+                provider = result["provider"]
+                context = result["context"] or None
+                message = result["message"]
+
+                if not use_ai and not message:
+                    messagebox.showerror("Error", "Please provide a fixed message or enable AI mode")
+                    return
+
+                mode_desc = f"AI ({provider})" if use_ai else "Fixed message"
+                self.log_box.insert("end", f"🤖 Starting auto-reply: {mode_desc} (every {interval} min)\n")
+
+                def run_auto_reply():
+                    try:
+                        auto_reply_to_mentions(
+                            interval_minutes=interval,
+                            reply_message=message,
+                            use_ai=use_ai,
+                            ai_provider=provider,
+                            ai_context=context,
+                        )
+                    except Exception as e:
+                        self.log_box.insert("end", f"❌ Auto-reply error: {e}\n")
+                        self.log_box.see("end")
+
+                thread = threading.Thread(target=run_auto_reply, daemon=True)
+                thread.start()
+                messagebox.showinfo(
+                    "Started",
+                    f"Auto-reply mode started with {mode_desc}!\n\n"
+                    f"Note: If using AI, ensure you've set the API key:\n"
+                    f"export {provider.upper()}_API_KEY='your-key'"
+                )
+            except ValueError:
+                messagebox.showerror("Error", "Please enter a valid number for interval")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error: {e}")
+
         self.log_box.see("end")
 
 

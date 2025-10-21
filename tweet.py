@@ -29,6 +29,7 @@ from twitter_utils import (
     read_tweets_from_file,
     compute_delay_to_month_day_time,
 )
+from ai_reply_generator import create_reply_generator_from_config, AIReplyGenerator
 
 
 def _credentials_are_valid() -> bool:
@@ -157,13 +158,49 @@ def bulk_post_from_file(file_path: str, delay_minutes: int) -> None:
             time.sleep(delay_seconds)
 
 
-def auto_reply_to_mentions(interval_minutes: int, reply_message: str, state_file: str = "last_mention_id.txt") -> None:
-    """Periodically check mentions and reply to new ones with reply_message.
+def auto_reply_to_mentions(
+    interval_minutes: int,
+    reply_message: str = "",
+    state_file: str = "last_mention_id.txt",
+    use_ai: bool = False,
+    ai_provider: str = "none",
+    ai_model: Optional[str] = None,
+    ai_context: Optional[str] = None,
+) -> None:
+    """Periodically check mentions and reply to new ones.
+
+    Can use either:
+    1. Fixed reply_message (traditional)
+    2. AI-generated contextual replies (if use_ai=True)
+
+    Args:
+        interval_minutes: How often to check for mentions
+        reply_message: Fixed message (used if use_ai=False)
+        state_file: File to track last replied mention ID
+        use_ai: Whether to use AI for generating replies
+        ai_provider: AI provider ("openai", "anthropic", "ollama", "groq", "none")
+        ai_model: Optional specific model to use
+        ai_context: Optional context about your brand/account for AI
 
     Keeps last replied mention ID in a local file to avoid duplicates.
     Runs until interrupted (Ctrl+C).
     """
     api = get_api()
+
+    # Initialize AI generator if requested
+    ai_generator: Optional[AIReplyGenerator] = None
+    if use_ai:
+        print(f"Initializing AI reply generator (provider: {ai_provider})...")
+        try:
+            ai_generator = create_reply_generator_from_config(
+                provider_name=ai_provider,
+                model=ai_model,
+            )
+            print(f"✅ AI generator ready using {ai_provider}")
+        except Exception as e:
+            print(f"⚠️ AI initialization failed: {e}")
+            print("Falling back to template-based replies")
+            ai_generator = create_reply_generator_from_config("none")
 
     def load_last_id() -> Optional[int]:
         try:
@@ -184,7 +221,8 @@ def auto_reply_to_mentions(interval_minutes: int, reply_message: str, state_file
 
     last_id = load_last_id()
     delay = max(1, int(interval_minutes)) * 60
-    print("Auto-reply mode enabled. Press Ctrl+C to stop.")
+    mode = "AI-powered" if use_ai else "fixed message"
+    print(f"Auto-reply mode enabled ({mode}). Press Ctrl+C to stop.")
     while True:
         try:
             mentions = api.mentions_timeline(since_id=last_id, tweet_mode="extended")
@@ -193,9 +231,38 @@ def auto_reply_to_mentions(interval_minutes: int, reply_message: str, state_file
                 screen_name = getattr(m.user, "screen_name", None)
                 if not screen_name:
                     continue
-                reply_text = f"@{screen_name} {reply_message}"
+
+                # Generate reply based on mode
+                if use_ai and ai_generator:
+                    # AI-generated contextual reply
+                    mention_text = getattr(m, "full_text", getattr(m, "text", ""))
+                    try:
+                        generated_reply = ai_generator.generate_reply(
+                            mention_text=mention_text,
+                            mention_author=screen_name,
+                            context=ai_context,
+                        )
+                        reply_content = generated_reply
+                        print(f"🤖 AI generated: {reply_content}")
+                    except Exception as e:
+                        print(f"⚠️ AI generation failed: {e}, using fallback")
+                        reply_content = reply_message or "Thanks for reaching out!"
+                else:
+                    # Fixed message mode
+                    reply_content = reply_message
+
+                # Construct final reply with @mention
+                reply_text = f"@{screen_name} {reply_content}"
+
+                # Ensure we stay under 280 characters
+                if len(reply_text) > 280:
+                    # Truncate the reply content to fit
+                    max_content_length = 280 - len(f"@{screen_name} ") - 3  # 3 for "..."
+                    reply_content = reply_content[:max_content_length] + "..."
+                    reply_text = f"@{screen_name} {reply_content}"
+
                 api.update_status(status=reply_text, in_reply_to_status_id=m.id)
-                print(f"Replied to @{screen_name} (id={m.id})")
+                print(f"✅ Replied to @{screen_name} (id={m.id})")
                 last_id = m.id
                 save_last_id(last_id)
         except tweepy.Unauthorized as e:
