@@ -29,6 +29,8 @@ from twitter_utils import (
     read_tweets_from_file,
     compute_delay_to_month_day_time,
 )
+from token_manager import get_tokens, consume_tokens
+from ai_reply import build_reply_prompt, generate_reply_via_api
 
 
 def _credentials_are_valid() -> bool:
@@ -155,6 +157,108 @@ def bulk_post_from_file(file_path: str, delay_minutes: int) -> None:
 
         if idx < len(tweets) and delay_seconds:
             time.sleep(delay_seconds)
+
+
+def bulk_schedule_from_file(file_path: str, frequency_minutes: int) -> list[threading.Timer]:
+    """Schedule tweets from file at the given frequency (minutes) between posts.
+
+    Returns list of Timer objects for possible cancellation.
+    """
+    tweets = read_tweets_from_file(file_path)
+    if not tweets:
+        print("No tweets found in file.")
+        return []
+
+    timers: list[threading.Timer] = []
+    for i, tmsg in enumerate(tweets):
+        seconds = max(0, i * frequency_minutes * 60)
+
+        def make_send(message):
+            def _send():
+                try:
+                    post_tweet(message)
+                    print("Tweet sent successfully!")
+                except Exception as e:
+                    print(f"Scheduled bulk post failed: {e}", file=sys.stderr)
+
+            return _send
+
+        when = datetime.now() + timedelta(seconds=seconds)
+        print(f"Tweet scheduled for {when.strftime('%Y-%m-%d %H:%M')}...")
+        timer = threading.Timer(seconds, make_send(tmsg))
+        timer.daemon = True
+        timer.start()
+        timers.append(timer)
+
+    return timers
+
+
+def auto_reply_ai(interval_minutes: int, user_spec: str, frequency_limit_tokens: int = 500) -> None:
+    """Auto-reply using AI: periodically fetch mentions, generate replies via AI, and post.
+
+    Each reply consumes 1 token from token_manager. The function runs until interrupted.
+    """
+    api = get_api()
+
+    def load_last_id(state_file: str = "last_mention_id_ai.txt") -> Optional[int]:
+        try:
+            with open(state_file, "r", encoding="utf-8") as f:
+                s = f.read().strip()
+                return int(s) if s else None
+        except FileNotFoundError:
+            return None
+        except Exception:
+            return None
+
+    def save_last_id(tweet_id: int, state_file: str = "last_mention_id_ai.txt") -> None:
+        try:
+            with open(state_file, "w", encoding="utf-8") as f:
+                f.write(str(tweet_id))
+        except Exception as e:
+            print(f"Warning: failed to write state file: {e}", file=sys.stderr)
+
+    last_id = load_last_id()
+    delay = max(1, int(interval_minutes)) * 60
+    print("AI Auto-reply mode enabled. Press Ctrl+C to stop.")
+    while True:
+        try:
+            mentions = api.mentions_timeline(since_id=last_id, tweet_mode="extended")
+            for m in reversed(mentions):
+                screen_name = getattr(m.user, "screen_name", None)
+                text = getattr(m, "full_text", None) or getattr(m, "text", "")
+                if not screen_name:
+                    continue
+
+                # Check tokens
+                left, limit = get_tokens()
+                if left <= 0:
+                    print("Token limit reached for this month. Stopping AI replies.")
+                    return
+
+                prompt = build_reply_prompt(user_spec, text)
+                reply_text = generate_reply_via_api(prompt)
+
+                # Consume token
+                ok = consume_tokens(1)
+                if not ok:
+                    print("Failed to consume token; stopping AI replies")
+                    return
+
+                try:
+                    to_post = f"@{screen_name} {reply_text}"
+                    api.update_status(status=to_post, in_reply_to_status_id=m.id)
+                    print(f"Replied to @{screen_name} (id={m.id}) via AI")
+                    last_id = m.id
+                    save_last_id(last_id)
+                except Exception as e:
+                    print(f"Failed to post AI reply: {e}", file=sys.stderr)
+        except KeyboardInterrupt:
+            print("\nAI Auto-reply stopped by user.")
+            break
+        except Exception as e:
+            print(f"Unexpected error: {e}", file=sys.stderr)
+
+        time.sleep(delay)
 
 
 def auto_reply_to_mentions(interval_minutes: int, reply_message: str, state_file: str = "last_mention_id.txt") -> None:

@@ -1,0 +1,6 @@
+{
+    "api_key": "test_key_123",
+    "api_secret": "test_secret_456",
+    "access_token": "test_token_789",
+    "access_token_secret": "test_token_secret_012"
+}
