@@ -1,5 +1,5 @@
 """
-PizzaApp - Professional Twitter Automation GUI
+Sashimi App - Professional Twitter Automation GUI
 Built with customtkinter (Modern Dark Design with Enhanced UI)
 """
 
@@ -20,40 +20,41 @@ import threading
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 from datetime import datetime
+import calendar
 import time
 
 # backend helpers
 from tweet import (
+    post_tweet,
     schedule_tweet,
     schedule_tweet_in_month,
     bulk_schedule_from_file,
     auto_reply_ai,
 )
 from token_manager import get_tokens
-
-# Import backend functions from tweet.py
-from tweet import post_tweet, schedule_tweet, bulk_post_from_file, auto_reply_to_mentions
 from twitter_utils import read_tweets_from_file
 
 CONFIG_FILE = Path("config.json")
 
-# Modern Color Palette
+# Sashimi-Inspired Modern Color Palette (White Background, Orange/Red Accents)
 COLORS = {
-    'primary': '#1a1a2e',
-    'secondary': '#16213e', 
-    'accent': '#0f3460',
-    'highlight': '#e94560',
-    'success': '#2ecc71',
-    'warning': '#f39c12',
-    'error': '#e74c3c',
-    'text_primary': '#ffffff',
-    'text_secondary': '#bdc3c7',
-    'text_muted': '#7f8c8d',
-    'card_bg': '#2c3e50',
-    'card_hover': '#34495e',
-    'border': '#3498db',
-    'gradient_start': '#667eea',
-    'gradient_end': '#764ba2'
+    'primary': '#ffffff',        # Pure white background
+    'secondary': '#f8f9fa',      # Very light gray for secondary elements
+    'accent': '#ff6b35',         # Coral orange (sashimi-inspired)
+    'highlight': '#ff4757',      # Deep red-orange for highlights
+    'success': '#2ed573',        # Modern green
+    'warning': '#ffa726',        # Modern orange
+    'error': '#ff3838',          # Modern red
+    'text_primary': '#2d3436',   # Dark gray for primary text
+    'text_secondary': '#636e72', # Medium gray for secondary text
+    'text_muted': '#b2bec3',     # Light gray for muted text
+    'card_bg': '#ffffff',        # White cards
+    'card_hover': '#f8f9fa',     # Light gray hover
+    'border': '#e9ecef',         # Subtle borders
+    'gradient_start': '#ff6b35', # Coral orange gradient
+    'gradient_end': '#ff4757',   # Red-orange gradient
+    'shadow': '#000000',         # Shadow color for depth
+    'glass_bg': '#fefefe',  # Semi-transparent white for glass effects
 }
 
 
@@ -61,17 +62,20 @@ class PizzaApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # App window with enhanced styling
-        self.title("🍕 PizzaApp - X Automation")
-        self.geometry("1200x800")
-        self.minsize(1000, 700)
+        # Ultra-modern window configuration
+        self.title("🍣 Sashimi App - Professional X Automation")
+        self.geometry("1300x850")
+        self.minsize(1100, 750)
         self.resizable(True, True)
-        
-        # Set modern dark theme
-        ctk.set_appearance_mode("dark")
+
+        # Remove window borders for modern look (optional)
+        # self.overrideredirect(True)  # Uncomment for borderless window
+
+        # Set modern light theme with sashimi-inspired colors
+        ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
-        
-        # Configure window styling
+
+        # Configure window styling with subtle shadow effect
         self.configure(fg_color=COLORS['primary'])
 
         # Root grid config (important!)
@@ -96,7 +100,7 @@ class PizzaApp(ctk.CTk):
 
         # Frames for navigation
         self.frames = {}
-        for F in (MainPage, SettingsPage):
+        for F in (MainPage, SettingsPage, AgentPosterPage):
             page_name = F.__name__
             frame = F(parent=self.container, controller=self)
             self.frames[page_name] = frame
@@ -171,68 +175,116 @@ class PizzaApp(ctk.CTk):
 
 
 class NavBar(ctk.CTkFrame):
-    """Enhanced top navigation bar with modern styling."""
+    """Ultra-modern navigation bar with glassmorphism and sashimi-inspired design."""
 
     def __init__(self, parent, controller):
         super().__init__(
-            parent, 
-            fg_color=COLORS['secondary'], 
-            height=80,
+            parent,
+            fg_color=COLORS['glass_bg'],
+            height=90,
             corner_radius=0,
-            border_width=0
+            border_width=1,
+            border_color=COLORS['border']
         )
         self.controller = controller
-        
+
         # Configure grid
         self.grid_columnconfigure(1, weight=1)  # Title column expands
-        
-        # Enhanced logo with better styling
-        self.logo_label = ctk.CTkLabel(
-            self, 
-            text="🍕", 
-            font=("Helvetica", 32),
-            text_color=COLORS['highlight']
-        )
-        self.logo_label.grid(row=0, column=0, padx=25, pady=15, sticky="w")
+        self.grid_columnconfigure(2, weight=0)
+        self.grid_columnconfigure(3, weight=0)
+        self.grid_columnconfigure(4, weight=0)
 
-        # Enhanced app title with gradient effect
+        # Modern sashimi logo with gradient effect
+        self.logo_label = ctk.CTkLabel(
+            self,
+            text="🍣",
+            font=("Helvetica", 36),
+            text_color=COLORS['accent']
+        )
+        self.logo_label.grid(row=0, column=0, padx=30, pady=20, sticky="w")
+
+        # Sleek app title
         self.title_label = ctk.CTkLabel(
-            self, 
-            text="PizzaApp – X Automation", 
-            font=("Helvetica", 24, "bold"),
+            self,
+            text="Sashimi App",
+            font=("Helvetica", 28, "bold"),
             text_color=COLORS['text_primary']
         )
-        self.title_label.grid(row=0, column=1, padx=10, pady=15, sticky="w")
+        self.title_label.grid(row=0, column=1, padx=15, pady=20, sticky="w")
 
-        # Status indicator
+        # Subtitle
+        self.subtitle_label = ctk.CTkLabel(
+            self,
+            text="X Automation Suite",
+            font=("Helvetica", 12),
+            text_color=COLORS['text_secondary']
+        )
+        self.subtitle_label.grid(row=1, column=1, padx=15, pady=(0, 20), sticky="w")
+
+        # Modern status indicator with pulse effect
         self.status_label = ctk.CTkLabel(
             self,
-            text="● Ready",
-            font=("Helvetica", 12),
+            text="● Online",
+            font=("Helvetica", 11, "bold"),
             text_color=COLORS['success']
         )
-        self.status_label.grid(row=0, column=2, padx=10, pady=15, sticky="e")
+        self.status_label.grid(row=0, column=2, padx=20, pady=20, sticky="e")
+
+        # Ultra-modern navigation buttons
+        self.main_button = ctk.CTkButton(
+            self,
+            text="🏠 Home",
+            width=130,
+            height=45,
+            font=("Helvetica", 13, "bold"),
+            fg_color="transparent",
+            hover_color=COLORS['card_hover'],
+            text_color=COLORS['text_primary'],
+            corner_radius=25,
+            border_width=2,
+            border_color=COLORS['border'],
+            command=lambda: self.controller.show_frame("MainPage"),
+        )
+        self.main_button.grid(row=0, column=3, padx=8, pady=20, sticky="e")
+
+        # Agent Poster button with accent color
+        self.agent_button = ctk.CTkButton(
+            self,
+            text="🤖 Agent",
+            width=130,
+            height=45,
+            font=("Helvetica", 13, "bold"),
+            fg_color=COLORS['accent'],
+            hover_color=COLORS['highlight'],
+            text_color="white",
+            corner_radius=25,
+            border_width=0,
+            command=lambda: self.controller.show_frame("AgentPosterPage"),
+        )
+        self.agent_button.grid(row=0, column=4, padx=8, pady=20, sticky="e")
+
+        # Settings button
+        self.settings_button = ctk.CTkButton(
+            self,
+            text="⚙️ Settings",
+            width=130,
+            height=45,
+            font=("Helvetica", 13, "bold"),
+            fg_color="transparent",
+            hover_color=COLORS['card_hover'],
+            text_color=COLORS['text_primary'],
+            corner_radius=25,
+            border_width=2,
+            border_color=COLORS['border'],
+            command=lambda: self.controller.show_frame("SettingsPage"),
+        )
+        self.settings_button.grid(row=0, column=5, padx=30, pady=20, sticky="e")
         
     def update_status(self, status, color=None):
         """Update the status indicator."""
         if color is None:
             color = COLORS['success']
         self.status_label.configure(text=f"● {status}", text_color=color)
-
-        # Enhanced settings button with modern styling
-        self.settings_button = ctk.CTkButton(
-            self,
-            text="⚙️ Settings",
-            width=120,
-            height=40,
-            font=("Helvetica", 14, "bold"),
-            fg_color=COLORS['accent'],
-            hover_color=COLORS['highlight'],
-            corner_radius=20,
-            border_width=0,
-            command=lambda: controller.show_frame("SettingsPage"),
-        )
-        self.settings_button.grid(row=0, column=3, padx=25, pady=15, sticky="e")
 
 
 class MainPage(ctk.CTkFrame):
@@ -286,9 +338,18 @@ class MainPage(ctk.CTkFrame):
         )
         subtitle_label.grid(row=1, column=0, pady=(0, 25), padx=30)
 
-        # Main content area with cards
-        main_content = ctk.CTkFrame(content_frame, fg_color=COLORS['primary'])
-        main_content.grid(row=1, column=0, sticky="nsew")
+        # Main content area with cards inside a scrollable region for smaller screens
+        scrollable = ctk.CTkScrollableFrame(
+            content_frame,
+            fg_color=COLORS['primary'],
+            corner_radius=0,
+            label_text="",
+        )
+        scrollable.grid(row=1, column=0, sticky="nsew")
+        scrollable.grid_columnconfigure(0, weight=1)
+
+        main_content = ctk.CTkFrame(scrollable, fg_color=COLORS['primary'])
+        main_content.grid(row=0, column=0, sticky="nsew")
         main_content.grid_columnconfigure((0, 1), weight=1)
         main_content.grid_rowconfigure(0, weight=1)
 
@@ -338,84 +399,124 @@ class MainPage(ctk.CTkFrame):
             border_color=COLORS['border']
         )
         self.log_box.grid(row=1, column=0, sticky="nsew")
-        self.log_box.insert("end", f"🍕 [{datetime.now().strftime('%H:%M:%S')}] Welcome to PizzaApp! Ready to automate your Twitter presence.\n")
+        self.log_box.insert("end", f"� [{datetime.now().strftime('%H:%M:%S')}] Welcome to Sashimi App! Ready to automate your Twitter presence.\n")
         self.log_box.insert("end", f"💡 [{datetime.now().strftime('%H:%M:%S')}] Tip: Use the cards on the left to get started with automation.\n")
         self.log_box.insert("end", f"🔧 [{datetime.now().strftime('%H:%M:%S')}] Make sure to configure your Twitter API credentials in Settings.\n\n")
 
     def create_action_card(self, parent, icon, title, description, command, color, row):
-        """Create a modern action card with enhanced styling."""
-        card = ctk.CTkFrame(
+        """Create an ultra-modern action card with glassmorphism and sleek design."""
+        # Main card container with shadow effect
+        card_container = ctk.CTkFrame(
             parent,
+            fg_color="transparent",
+            corner_radius=0,
+            border_width=0
+        )
+        card_container.grid(row=row, column=0, sticky="ew", pady=12, padx=15)
+        card_container.grid_columnconfigure(0, weight=1)
+
+        # Card with modern styling and subtle shadow
+        card = ctk.CTkFrame(
+            card_container,
             fg_color=COLORS['card_bg'],
-            corner_radius=15,
+            corner_radius=20,
             border_width=1,
             border_color=COLORS['border']
         )
-        card.grid(row=row, column=0, sticky="ew", pady=10, padx=10)
+        card.grid(row=0, column=0, sticky="ew")
         card.grid_columnconfigure(0, weight=1)
 
-        # Card content
+        # Hover effect binding
+        def on_enter(e):
+            card.configure(border_color=COLORS['accent'], fg_color=COLORS['card_hover'])
+
+        def on_leave(e):
+            card.configure(border_color=COLORS['border'], fg_color=COLORS['card_bg'])
+
+        card.bind("<Enter>", on_enter)
+        card.bind("<Leave>", on_leave)
+
+        # Card content with modern layout
         content_frame = ctk.CTkFrame(card, fg_color="transparent")
-        content_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
+        content_frame.grid(row=0, column=0, sticky="ew", padx=25, pady=25)
         content_frame.grid_columnconfigure(1, weight=1)
 
-        # Icon
-        icon_label = ctk.CTkLabel(
+        # Modern icon with background circle
+        icon_frame = ctk.CTkFrame(
             content_frame,
+            fg_color=COLORS['secondary'],  # Light background instead of transparent
+            width=50,
+            height=50,
+            corner_radius=25,
+            border_width=0
+        )
+        icon_frame.grid(row=0, column=0, padx=(0, 20), pady=5, sticky="nw")
+        icon_frame.grid_propagate(False)
+
+        icon_label = ctk.CTkLabel(
+            icon_frame,
             text=icon,
-            font=("Helvetica", 24),
+            font=("Helvetica", 20),
             text_color=color
         )
-        icon_label.grid(row=0, column=0, padx=(0, 15), pady=5, sticky="nw")
+        icon_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Text content
+        # Text content area
         text_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
         text_frame.grid(row=0, column=1, sticky="ew")
         text_frame.grid_columnconfigure(0, weight=1)
 
-        # Title
+        # Modern title with better typography
         title_label = ctk.CTkLabel(
             text_frame,
             text=title,
-            font=("Helvetica", 16, "bold"),
+            font=("Helvetica", 18, "bold"),
             text_color=COLORS['text_primary'],
             anchor="w"
         )
-        title_label.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+        title_label.grid(row=0, column=0, sticky="ew", pady=(0, 8))
 
-        # Description
+        # Enhanced description
         desc_label = ctk.CTkLabel(
             text_frame,
             text=description,
-            font=("Helvetica", 12),
+            font=("Helvetica", 13),
             text_color=COLORS['text_secondary'],
-            anchor="w"
+            anchor="w",
+            wraplength=400
         )
         desc_label.grid(row=1, column=0, sticky="ew")
 
-        # Action button
+        # Ultra-modern action button
         action_btn = ctk.CTkButton(
             card,
-            text="Go",
-            width=80,
-            height=35,
+            text="Launch →",
+            width=120,
+            height=42,
             font=("Helvetica", 12, "bold"),
             fg_color=color,
             hover_color=self.darken_color(color),
-            corner_radius=18,
+            text_color="white",
+            corner_radius=21,
+            border_width=0,
             command=command
         )
-        action_btn.grid(row=1, column=0, pady=(0, 20), padx=20, sticky="e")
+        action_btn.grid(row=1, column=0, pady=(15, 25), padx=25, sticky="e")
+
+        # Bind hover effects to button too
+        action_btn.bind("<Enter>", lambda e: on_enter(e))
+        action_btn.bind("<Leave>", lambda e: on_leave(e))
 
     def darken_color(self, color):
-        """Helper to darken a color for hover effects."""
+        """Helper to darken a color for hover effects with modern gradients."""
         color_map = {
-            COLORS['success']: '#27ae60',
-            COLORS['warning']: '#e67e22', 
-            COLORS['accent']: '#0d2847',
-            COLORS['highlight']: '#c0392b'
+            COLORS['accent']: '#e55a2b',      # Darker coral orange
+            COLORS['highlight']: '#e03e4a',   # Darker red-orange
+            COLORS['success']: '#26a65b',     # Darker green
+            COLORS['warning']: '#e67e22',     # Darker orange
+            COLORS['error']: '#e74c3c',       # Keep error red
         }
-        return color_map.get(color, color)
+        return color_map.get(color, COLORS['highlight'])
 
     # --- Backend integration with tweet.py ---
     def post_tweet_action(self):
@@ -553,14 +654,14 @@ class MainPage(ctk.CTkFrame):
         months = list(range(1, 13))
         days = list(range(1, 32))
         hours = list(range(0, 24))
-        minutes = [0, 15, 30, 45]
+        minutes = [f"{m:02d}" for m in range(0, 60, 5)]
 
         vars = {}
         vars['year'] = ctk.StringVar(value=str(now.year))
         vars['month'] = ctk.StringVar(value=str(now.month))
         vars['day'] = ctk.StringVar(value=str(now.day))
         vars['hour'] = ctk.StringVar(value=str(now.hour))
-        vars['minute'] = ctk.StringVar(value=str(0))
+        vars['minute'] = ctk.StringVar(value=f"{now.minute:02d}")
 
         r = 0
         ctk.CTkLabel(top, text="Year:").grid(row=r, column=0, padx=12, pady=6, sticky='w')
@@ -570,14 +671,33 @@ class MainPage(ctk.CTkFrame):
         ctk.CTkOptionMenu(top, values=[str(m) for m in months], variable=vars['month']).grid(row=r, column=1)
         r += 1
         ctk.CTkLabel(top, text="Day:").grid(row=r, column=0, padx=12, pady=6, sticky='w')
-        ctk.CTkOptionMenu(top, values=[str(d) for d in days], variable=vars['day']).grid(row=r, column=1)
+        day_menu = ctk.CTkOptionMenu(top, values=[str(d) for d in days], variable=vars['day'])
+        day_menu.grid(row=r, column=1)
         r += 1
         ctk.CTkLabel(top, text="Hour (24h):").grid(row=r, column=0, padx=12, pady=6, sticky='w')
         ctk.CTkOptionMenu(top, values=[str(h) for h in hours], variable=vars['hour']).grid(row=r, column=1)
         r += 1
         ctk.CTkLabel(top, text="Minute:").grid(row=r, column=0, padx=12, pady=6, sticky='w')
-        ctk.CTkOptionMenu(top, values=[str(m) for m in minutes], variable=vars['minute']).grid(row=r, column=1)
+        minute_menu = ctk.CTkOptionMenu(top, values=minutes, variable=vars['minute'])
+        minute_menu.grid(row=r, column=1)
         r += 1
+
+        def update_day_options(*_args):
+            try:
+                year_val = int(vars['year'].get())
+                month_val = int(vars['month'].get())
+                total_days = calendar.monthrange(year_val, month_val)[1]
+                values = [str(d) for d in range(1, total_days + 1)]
+                current = vars['day'].get()
+                if current not in values:
+                    vars['day'].set(values[-1])
+                day_menu.configure(values=values)
+            except Exception:
+                pass
+
+        vars['year'].trace_add("write", update_day_options)
+        vars['month'].trace_add("write", update_day_options)
+        update_day_options()
 
         def on_ok():
             y = int(vars['year'].get())
@@ -597,8 +717,8 @@ class MainPage(ctk.CTkFrame):
                     # Compute minutes until the datetime and use schedule_tweet
                     then = datetime(y, mo, d, hh, mm)
                     delta = then - now
-                    minutes = int(max(0, delta.total_seconds() // 60))
-                    schedule_tweet(message, delay_minutes=minutes)
+                    delay_minutes = int(max(0, delta.total_seconds() // 60))
+                    schedule_tweet(message, delay_minutes=delay_minutes)
                     self.log_box.insert("end", f"⏰ Tweet scheduled for {then.strftime('%Y-%m-%d %H:%M')}\n")
                 messagebox.showinfo("Success", "Tweet scheduled!")
             except Exception as e:
@@ -621,7 +741,14 @@ class MainPage(ctk.CTkFrame):
         freq_top.geometry("360x160")
 
         freq_var = ctk.StringVar(value="60")
-        options = [("Every 30 minutes", "30"), ("Every hour", "60"), ("Every 4 hours", "240"), ("Every 8 hours", "480"), ("Every day", "1440")]
+        options = [
+            ("Every 30 minutes", "30"),
+            ("Every hour", "60"),
+            ("Every 4 hours", "240"),
+            ("Every 8 hours", "480"),
+            ("Every day", "1440"),
+            ("Every week", "10080"),
+        ]
         r = 0
         ctk.CTkLabel(freq_top, text=f"Selected file: {filename}").grid(row=r, column=0, columnspan=2, pady=6, padx=12, sticky='w')
         r += 1
@@ -631,19 +758,16 @@ class MainPage(ctk.CTkFrame):
 
         def on_start_bulk():
             freq_min = int(freq_var.get())
-            self.log_box.insert("end", f"📁 Scheduling {filename} every {freq_min} minutes\n")
-
-            def run_sched():
-                try:
-                    bulk_schedule_from_file(filename, freq_min)
-                    self.log_box.insert("end", "✅ Bulk scheduling started!\n")
-                except Exception as e:
-                    self.log_box.insert("end", f"❌ Bulk scheduling error: {e}\n")
-                self.log_box.see("end")
-
-            thread = threading.Thread(target=run_sched, daemon=True)
-            thread.start()
-            messagebox.showinfo("Started", "Bulk scheduling started in background!")
+            self.log_box.insert("end", f"📁 Scheduling tweets from {Path(filename).name} every {freq_min} minutes\n")
+            try:
+                timers = bulk_schedule_from_file(filename, freq_min)
+                scheduled_count = len(timers)
+                self.log_box.insert("end", f"✅ Created {scheduled_count} scheduled posts.\n")
+                messagebox.showinfo("Started", f"Bulk scheduling created {scheduled_count} scheduled posts!")
+            except Exception as e:
+                self.log_box.insert("end", f"❌ Bulk scheduling error: {e}\n")
+                messagebox.showerror("Error", f"Failed to schedule tweets:\n{e}")
+            self.log_box.see("end")
             freq_top.destroy()
 
         ctk.CTkButton(freq_top, text="Start", command=on_start_bulk).grid(row=r, column=0, pady=8)
@@ -856,3 +980,133 @@ class SettingsPage(ctk.CTkFrame):
             messagebox.showerror("Error", "All fields are required!")
             return
         self.controller.save_credentials(creds)
+
+
+class AgentPosterPage(ctk.CTkFrame):
+    """Placeholder page for future AI agent posting experience."""
+
+    def __init__(self, parent, controller):
+        super().__init__(parent, fg_color=COLORS['primary'])
+        self.controller = controller
+
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # Reuse navbar for consistent navigation
+        self.navbar = NavBar(self, controller)
+        self.navbar.grid(row=0, column=0, sticky="ew")
+        self.navbar.update_status("Agent Poster", COLORS['highlight'])
+
+        content = ctk.CTkFrame(self, fg_color=COLORS['primary'])
+        content.grid(row=1, column=0, sticky="nsew", padx=30, pady=30)
+        content.grid_rowconfigure(1, weight=1)
+        content.grid_columnconfigure(0, weight=1)
+
+        hero = ctk.CTkFrame(
+            content,
+            fg_color=COLORS['card_bg'],
+            corner_radius=20,
+            border_width=1,
+            border_color=COLORS['border'],
+        )
+        hero.grid(row=0, column=0, sticky="ew", pady=(0, 20))
+        hero.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            hero,
+            text="🤖",
+            font=("Helvetica", 80),
+            text_color=COLORS['highlight'],
+        ).grid(row=0, column=0, pady=(30, 10))
+
+        ctk.CTkLabel(
+            hero,
+            text="Agent Poster",
+            font=("Helvetica", 28, "bold"),
+            text_color=COLORS['text_primary'],
+        ).grid(row=1, column=0, pady=(0, 10))
+
+        ctk.CTkLabel(
+            hero,
+            text="Chat with your AI assistant to craft and schedule posts (coming soon)",
+            font=("Helvetica", 16),
+            text_color=COLORS['text_secondary'],
+        ).grid(row=2, column=0, pady=(0, 30))
+
+        chat_shell = ctk.CTkFrame(
+            content,
+            fg_color=COLORS['card_bg'],
+            corner_radius=18,
+            border_width=1,
+            border_color=COLORS['border'],
+        )
+        chat_shell.grid(row=1, column=0, sticky="nsew")
+        chat_shell.grid_rowconfigure(1, weight=1)
+        chat_shell.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            chat_shell,
+            text="Agent Chat",
+            font=("Helvetica", 20, "bold"),
+            text_color=COLORS['text_primary'],
+        ).grid(row=0, column=0, sticky="w", padx=24, pady=(20, 10))
+
+        self.chat_log = ctk.CTkTextbox(
+            chat_shell,
+            fg_color=COLORS['primary'],
+            text_color=COLORS['text_primary'],
+            font=("Helvetica", 14),
+            corner_radius=12,
+            border_width=0,
+        )
+        self.chat_log.grid(row=1, column=0, sticky="nsew", padx=24)
+        self.chat_log.insert(
+            "end",
+            "🤖 Agent: Hi! I'll soon help craft bespoke tweets with AI. For now, this is a placeholder.\n",
+        )
+        self.chat_log.configure(state="disabled")
+
+        input_frame = ctk.CTkFrame(chat_shell, fg_color="transparent")
+        input_frame.grid(row=2, column=0, sticky="ew", padx=24, pady=(12, 24))
+        input_frame.grid_columnconfigure(0, weight=1)
+
+        self.chat_entry = ctk.CTkEntry(
+            input_frame,
+            placeholder_text="Type your request...",
+            height=44,
+            font=("Helvetica", 14),
+            fg_color=COLORS['primary'],
+            text_color=COLORS['text_primary'],
+            corner_radius=12,
+        )
+        self.chat_entry.grid(row=0, column=0, sticky="ew", padx=(0, 12))
+
+        def send_placeholder():
+            msg = self.chat_entry.get().strip()
+            if not msg:
+                return
+            self.chat_entry.delete(0, "end")
+            self.chat_log.configure(state="normal")
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            self.chat_log.insert("end", f"🧑‍💻 You [{timestamp}]: {msg}\n")
+            self.chat_log.insert("end", "🤖 Agent: I'll handle this soon. Stay tuned!\n")
+            self.chat_log.see("end")
+            self.chat_log.configure(state="disabled")
+
+        ctk.CTkButton(
+            input_frame,
+            text="Send",
+            width=110,
+            height=44,
+            font=("Helvetica", 14, "bold"),
+            fg_color=COLORS['accent'],
+            hover_color=COLORS['highlight'],
+            corner_radius=12,
+            command=send_placeholder,
+        ).grid(row=0, column=1)
+
+
+if __name__ == "__main__":
+    app = PizzaApp()
+    app.mainloop()

@@ -15,3 +15,6 @@ groq>=0.4.0,<1
 
 # For local models (Ollama)
 ollama>=0.1.0,<1
+
+# For environment variables
+python-dotenv>=1.0.0

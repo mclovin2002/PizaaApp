@@ -20,10 +20,10 @@ from typing import Tuple
 
 
 # Option A: paste credentials here (recommended for quick local tests)
-API_KEY: str = "jgvjvhgvjghvjhbjhb"
-API_SECRET: str = "hgvhgvjhbjhbjhb"
-ACCESS_TOKEN: str = "jhbjhbjhb"
-ACCESS_TOKEN_SECRET: str = "hjhbjh"
+API_KEY: str = "test_key_123"
+API_SECRET: str = "test_secret_456"
+ACCESS_TOKEN: str = "test_token_789"
+ACCESS_TOKEN_SECRET: str = "test_token_secret_012"
 
 
 PLACEHOLDERS = {
